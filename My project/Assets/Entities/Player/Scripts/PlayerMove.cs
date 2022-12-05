@@ -1,113 +1,67 @@
-using System;
 using UnityEngine;
 
 public class PlayerMove : MonoBehaviour
 {
+    #region Public main fields
     [Header("Main Parameters")]
 
-    [SerializeField] public JumpParams jumpParams;
-    [SerializeField] public DashParams dashParams;
-    [SerializeField] public WallclingParams clingParams;
-    [SerializeField] public MoveParams moveParams;
-    [SerializeField] public CombatParams combatParams;
-    [SerializeField] public HealthParams healthParams;
+    [SerializeField] public JumpParams JumpParams;
+    [SerializeField] public DashParams DashParams;
+    [SerializeField] public WallclingParams ClingParams;
+    [SerializeField] public MoveParams MoveParams;
+    [SerializeField] public CombatParams CombatParams;
+    [SerializeField] public HealthParams HealthParams;
+    #endregion
 
+    #region Public fields
     [Header("Extra Parameters")]
 
-    public bool isFacingRight;
-    public States states;
+    public bool IsFacingRight;
+    [HideInInspector] public bool DashFlag;
+    [HideInInspector] public bool DashContiniousFlag;
+    [HideInInspector] public bool DoubleJumpFlag;
+    [HideInInspector] public bool JumpContiniusFlag;
+    public float MoveBlockCooldown;
+    [HideInInspector] public float DashBreakTime;
+    [HideInInspector] public float Timer;
+    [HideInInspector] public float ShieldBreakTime;
+    [HideInInspector] public Vector2 HitDirection;
+    public GameObject Spawnpoint;
+    public States States;
+    #endregion
 
-    //related to movement
-
-    private float moveBlockTime;
-    public float moveBlockCooldown;
-    public int horizontal;
-    private Vector3 moveDirection;
-
-    //related to combat
-
-    public Vector2 hitDirection;
-    private float hitBlockTime;
-
-    //related to dash
-
-    [HideInInspector] public bool dashFlag;
-    [HideInInspector] public float dashBreakTime;
-    [HideInInspector] public bool dashContiniusFlag;
-    private float dashCooldown;
-    private int dashDirectionX;
-
-    //related to jump
-
-    [HideInInspector] public bool doublejumpFlag;
-    private float jumpBreakTime;
-    [HideInInspector] public bool jumpContiniusFlag;
-    private float jumpCurrentForce;
-
-    // other
-
-    [HideInInspector] public float timer;
-    [HideInInspector] public float shieldBreakTime;
-    private float regenStartTime;
-    private Rigidbody2D body;
-    public GameObject spawnpoint;
-    Animator anim;
-
-    private void OnCollisionStay2D(Collision2D coll)
+    #region Private fields
+    private bool _canSprint
     {
-        if (coll.transform.tag == "Ground") 
+        get
         {
-            states.isGrounded = true;
-            doublejumpFlag = true;
-            dashFlag = true;
-            anim.SetInteger("vertDir", 0);
+            return MoveParams.canSprint
+                && Input.GetKey(MoveParams.sprintKey)
+                && (MoveParams.sprintEnergyUsage < HealthParams.energy);
         }
     }
-
-    private void OnCollisionEnter2D(Collision2D coll)
+    private int _DashDirectionX;
+    private int _Horizontal;
+    private float _MoveBlockTime;
+    private float _JumpBreakTime;
+    private float _JumpCurrentForce;
+    private float _RegenStartTime;
+    private float _HitBlockTime;
+    private float _DashCooldown;
+    private Vector3 _MoveDirection;
+    private Vector3 _ClingForce
     {
-        if (coll.transform.tag == "Ceiling")
+        get
         {
-            jumpCurrentForce = 0;
-            jumpContiniusFlag = false;
-            dashBreakTime = 0;
-            body.velocity = new Vector2(body.velocity.x, 0);
-        } 
-
-        if ((coll.transform.tag == "SmoothWall") && states.isDashing) dashBreakTime = 0;
-
-        if (coll.transform.tag == "Wall")
-        {
-            if (clingParams.canWallCling && !states.isGrounded) 
-            {
-                states.isClinging = true; 
-                doublejumpFlag = true; 
-                dashFlag = true;
-                jumpContiniusFlag = false;
-                body.velocity = new Vector2(0, 0);
-            }
-            if (states.isDashing) dashBreakTime = 0;
+            var speedFactor = _Body.velocity.y * 0.1f;
+            return new Vector3(0, -1, 0) * _Body.mass * ClingParams.force * speedFactor;
         }
-
-        if (coll.transform.tag == "Ground") anim.SetTrigger("Ground");
     }
+    private Rigidbody2D _Body;
+    private Animator _Anim;
+    #endregion
 
-    private void OnCollisionExit2D(Collision2D coll)
-    {
-        if (coll.transform.tag == "Ground") states.isGrounded = false;
-        if (coll.transform.tag == "Wall") states.isClinging = false;
-    }
-
-    private void GetDamage(float value)
-    {
-        ChangeEnergy(0, false);
-        healthParams.health -= value / healthParams.defence;
-        moveBlockTime = timer + moveBlockCooldown;
-        dashContiniusFlag = false;
-        dashBreakTime = 0;
-        jumpContiniusFlag = false;
-    }
-
+    #region Public methods
     public void ChangeHP(float value, bool isHit, bool isBodytouchDamage)
     {
         if (isHit)
@@ -115,272 +69,334 @@ public class PlayerMove : MonoBehaviour
             if (isBodytouchDamage) GetDamage(value);
             else
             {
-                if (states.isDefencing)  ChangeEnergy(value / healthParams.defence, false);
-                else  GetDamage(value);          
+                if (States.isDefencing)
+                {
+                    ChangeEnergy(-value / HealthParams.defence, false);
+                    GetDamage(Mathf.Clamp(value - HealthParams.energy, 0, float.MaxValue));
+                }
+                else GetDamage(value);          
             }
         }
-        else healthParams.health += value;
+        else HealthParams.health += value;
     }
 
     public void ChangeEnergy(float value, bool durable=false)
     {
-        healthParams.energy += value;
-        if (!durable) regenStartTime = timer + healthParams.regenCooldown;
+        HealthParams.energy += value;
+        if (!durable) _RegenStartTime = Timer + HealthParams.regenCooldown;
     }
 
     public void GetPunch(Vector2 dir)
     {
-        if (states.isDefencing) body.velocity += new Vector2(dir.x / 2, 0);
-        else body.velocity = dir;
+        if (States.isDefencing) _Body.velocity += new Vector2(dir.x / 2, 0);
+        else _Body.velocity = dir;
+    }
+
+    public void VerticalRecoil(float recoil)
+    {
+        _Body.velocity = new Vector2(_Body.velocity.x, recoil);
+    }
+
+    public void HorizontakRecoil(float recoil)
+    {
+        _Body.velocity -= new Vector2(_Horizontal * recoil, 0);
+    }
+    #endregion
+
+    #region Private methods
+    private void OnCollisionStay2D(Collision2D coll)
+    {
+        if (string.Equals(coll.transform.tag, "Ground", System.StringComparison.CurrentCultureIgnoreCase)) 
+        {
+            States.isGrounded = true;
+            DoubleJumpFlag = true;
+            DashFlag = true;
+            _Anim.SetInteger("vertDir", 0);
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D coll)
+    {
+        if (string.Equals(coll.transform.tag, "Ceiling", System.StringComparison.CurrentCultureIgnoreCase))
+        {
+            _JumpCurrentForce = 0;
+            JumpContiniusFlag = false;
+            DashBreakTime = 0;
+            _Body.velocity = new Vector2(_Body.velocity.x, 0);
+        } 
+
+        if (string.Equals(coll.transform.tag, "SmoothWall", System.StringComparison.CurrentCultureIgnoreCase) 
+            && States.isDashing) DashBreakTime = 0;
+
+        if (string.Equals(coll.transform.tag, "Wall", System.StringComparison.CurrentCultureIgnoreCase))
+        {
+            if (ClingParams.canWallCling && !States.isGrounded) 
+            {
+                States.isClinging = true; 
+                DoubleJumpFlag = true; 
+                DashFlag = true;
+                JumpContiniusFlag = false;
+                _Body.velocity = new Vector2(0, 0);
+            }
+            if (States.isDashing) DashBreakTime = 0;
+        }
+
+        if (string.Equals(coll.transform.tag, "Ground", System.StringComparison.CurrentCultureIgnoreCase)) 
+            _Anim.SetTrigger("Ground");
+    }
+
+    private void OnCollisionExit2D(Collision2D coll)
+    {
+        if (string.Equals(coll.transform.tag, "Ground", System.StringComparison.CurrentCultureIgnoreCase)) 
+            States.isGrounded = false;
+        if (string.Equals(coll.transform.tag, "Wall", System.StringComparison.CurrentCultureIgnoreCase)) 
+            States.isClinging = false;
+    }
+
+    private void GetDamage(float value)
+    {
+        ChangeEnergy(0, false);
+        HealthParams.health -= value / HealthParams.defence;
+        DashContiniousFlag = false;
+        DashBreakTime = 0;
+        JumpContiniusFlag = false;
+        if (value > 0)
+        {
+            _MoveBlockTime = Timer + MoveBlockCooldown;
+        }
     }
 
     private void Flip()
     {
-        isFacingRight = !isFacingRight;
+        IsFacingRight = !IsFacingRight;
         Vector3 theScale = transform.localScale;
         theScale.x *= -1;
         transform.localScale = theScale;
     }
 
-    public void VerticalRecoil(float recoil)
-    {
-        body.velocity = new Vector2(body.velocity.x, recoil);
-    }
-
-    public void HorizontakRecoil(float recoil)
-    {
-        body.velocity -= new Vector2(horizontal * recoil, 0);
-    }
-
     private void Death()
     {
-        if (healthParams.health <= 0)
+        if (HealthParams.health <= 0)
         {
-            healthParams.health = healthParams.maxHealth;
-            transform.position = spawnpoint.transform.position;
+            HealthParams.health = HealthParams.maxHealth;
+            transform.position = Spawnpoint.transform.position;
         }
     }
 
-    private bool canSprint
+    private void DoJump(Vector2 jumpVector)
     {
-        get
-        {
-            return moveParams.canSprint
-                && Input.GetKey(moveParams.sprintKey)
-                && (moveParams.sprintEnergyUsage < healthParams.energy);
-        }
-    }
-
-    private void doJump(Vector2 _jumpVector)
-    {
-        anim.SetTrigger("Jump");
-        ChangeEnergy(-jumpParams.energyUsage, false);
-        body.velocity = _jumpVector;
-        jumpBreakTime = timer + jumpParams.duration;
-        jumpContiniusFlag = true;
+        _Anim.SetTrigger("Jump");
+        ChangeEnergy(-JumpParams.energyUsage, false);
+        _Body.velocity = jumpVector;
+        _JumpBreakTime = Timer + JumpParams.duration;
+        JumpContiniusFlag = true;
     }
 
     private void Jump()
     {
-        var canJump = !states.isDashing
-                && jumpParams.energyUsage < healthParams.energy
-                && Input.GetKeyDown(jumpParams.key);
+        var canJump = !States.isDashing
+                && JumpParams.energyUsage < HealthParams.energy
+                && Timer >= _MoveBlockTime
+                && Input.GetKeyDown(JumpParams.key);
 
         if (canJump)
         {
-            if (states.isClinging)
+            if (States.isClinging)
             {
-                horizontal *= -1;
+                _Horizontal *= -1;
                 Flip();
-                moveBlockTime = timer + moveBlockCooldown;
-                doJump(new Vector2(Convert.ToInt16(isFacingRight) * clingParams.momentum, 
-                    jumpParams.momentum));
+                _MoveBlockTime = Timer + MoveBlockCooldown;
+                var direction = IsFacingRight == true ? 1:-1;
+                DoJump(new Vector2(direction * ClingParams.momentum, JumpParams.momentum));
             }
-            else if (states.isGrounded)
+            else if (States.isGrounded)
             {
-                doJump(new Vector2(body.velocity.x, jumpParams.momentum));
+                DoJump(new Vector2(_Body.velocity.x, JumpParams.momentum));
             }
-            else if (doublejumpFlag)
+            else if (DoubleJumpFlag)
             {
-                doublejumpFlag = false;
-                doJump(new Vector2(body.velocity.x, jumpParams.momentum));
+                DoubleJumpFlag = false;
+                DoJump(new Vector2(_Body.velocity.x, JumpParams.momentum));
             }
         }
-        if (jumpBreakTime > timer)
+        if (_JumpBreakTime > Timer)
         {
-            if (Input.GetKey(jumpParams.key) && jumpContiniusFlag)
+            if (Input.GetKey(JumpParams.key) && JumpContiniusFlag)
             {
-                jumpCurrentForce = (jumpBreakTime - timer) / jumpParams.duration;
+                _JumpCurrentForce = (_JumpBreakTime - Timer) / JumpParams.duration;
             }
-            else jumpCurrentForce = 0;
+            else _JumpCurrentForce = 0;
         }
-        if (Input.GetKeyUp(jumpParams.key)) jumpContiniusFlag = false;
+        if (Input.GetKeyUp(JumpParams.key)) JumpContiniusFlag = false;
     }
     
     private void Run()
     {
-        var canRun = !states.isDashing
-                && timer >= moveBlockTime;
+        var canRun = !States.isDashing
+                && Timer >= _MoveBlockTime;
 
         if (canRun)
         {
-            anim.SetBool("isRun", true);
-            if (Input.GetKey(moveParams.leftKey)) horizontal = -1;
-            else if (Input.GetKey(moveParams.rightKey)) horizontal = 1;
+            _Anim.SetBool("isRun", true);
+            if (Input.GetKey(MoveParams.leftKey)) _Horizontal = -1;
+            else if (Input.GetKey(MoveParams.rightKey)) _Horizontal = 1;
             else
             {
-                horizontal = 0;
-                anim.SetBool("isRun", false);
+                _Horizontal = 0;
+                _Anim.SetBool("isRun", false);
             }
-            moveDirection = new Vector2(horizontal, 0);
+            _MoveDirection = new Vector2(_Horizontal, 0);
 
-            if (horizontal > 0 && !isFacingRight) Flip();
-            else if (horizontal < 0 && isFacingRight) Flip();
+            if (_Horizontal > 0 && !IsFacingRight) Flip();
+            else if (_Horizontal < 0 && IsFacingRight) Flip();
         }
         else
         {
-            horizontal = 0;
-            anim.SetBool("isRun", false);
+            _MoveDirection = new Vector2(0, 0);
+            _Anim.SetBool("isRun", false);
         }
 
-        if (!states.isDashing)
-            body.velocity = new Vector2(
-                Mathf.Clamp(body.velocity.x, -moveParams.maxSpeed, moveParams.maxSpeed),
-                body.velocity.y);
+        if (!States.isDashing)
+            _Body.velocity = new Vector2(
+                Mathf.Clamp(_Body.velocity.x, -MoveParams.maxSpeed, MoveParams.maxSpeed),
+                _Body.velocity.y);
     }
 
     private void Dash()
     {
-        var canDash = dashParams.canDash
-                && Input.GetKeyDown(dashParams.key)
-                && (dashParams.energyUsage * dashParams.duration < healthParams.energy)
-                && (dashCooldown < timer)
-                && (dashFlag);
+        var canDash = Input.GetKeyDown(DashParams.key)
+                && DashParams.canDash
+                && DashFlag
+                && Timer >= _MoveBlockTime
+                && _DashCooldown < Timer
+                && DashParams.energyUsage * DashParams.duration < HealthParams.energy;
 
         if (canDash)
         {
-            anim.SetBool("isDash", true);
-            if (states.isClinging) { horizontal *= -1; Flip(); }
-            dashCooldown = timer + dashParams.cooldown;
-            dashBreakTime = timer + dashParams.duration; dashContiniusFlag = true;
-            dashFlag = false;
-            body.gravityScale = 0;
-            if (isFacingRight) dashDirectionX = 1;
-            else dashDirectionX = -1;
+            _Anim.SetBool("isDash", true);
+            if (States.isClinging) { _Horizontal *= -1; Flip(); }
+            _DashCooldown = Timer + DashParams.cooldown;
+            DashBreakTime = Timer + DashParams.duration; DashContiniousFlag = true;
+            DashFlag = false;
+            _Body.gravityScale = 0;
+            if (IsFacingRight) _DashDirectionX = 1;
+            else _DashDirectionX = -1;
         }
 
-        if (dashBreakTime >= timer) if (Input.GetKey(dashParams.key) && dashContiniusFlag)
+        if (DashBreakTime >= Timer && Input.GetKey(DashParams.key) && DashContiniousFlag)
         {
-            ChangeEnergy(-dashParams.energyUsage * Time.deltaTime, false);
-            jumpCurrentForce = 0;
-            body.velocity = new Vector2(dashParams.speed * dashDirectionX, 0);
-            states.isDashing = true;
+            ChangeEnergy(-DashParams.energyUsage * Time.deltaTime, false);
+            _JumpCurrentForce = 0;
+            _Body.velocity = new Vector2(DashParams.speed * _DashDirectionX, 0);
+            States.isDashing = true;
         }
 
-        if ((dashBreakTime < timer || Input.GetKeyUp(dashParams.key)) && states.isDashing)
+        if ((DashBreakTime < Timer || Input.GetKeyUp(DashParams.key)) && States.isDashing)
         {
-            anim.SetBool("isDash", false);
-            dashContiniusFlag = false; states.isDashing = false;
-            body.velocity = new Vector2(0, 0);
-            body.gravityScale = 5;
+            _Anim.SetBool("isDash", false);
+            DashContiniousFlag = false;
+            States.isDashing = false;
+            _Body.velocity = new Vector2(0, 0);
+            _Body.gravityScale = 5;
         }
     }
 
     private void DoHit()
     {
-        if (Input.GetKey(moveParams.upKey))
+        if (Input.GetKey(MoveParams.upKey))
         {
-            combatParams.swordUp.SetActive(true);
-            hitDirection = Vector2.up;
+            CombatParams.swordUp.SetActive(true);
+            HitDirection = Vector2.up;
         }
-        else if (states.isClinging && !Input.GetKey(moveParams.upKey))
+        else if (States.isClinging && !Input.GetKey(MoveParams.upKey))
         {
-            combatParams.swordWall.SetActive(true);
-            hitDirection = Vector2.right;
+            CombatParams.swordWall.SetActive(true);
+            HitDirection = Vector2.right;
         }
-        else if (Input.GetKey(moveParams.downKey) && !states.isGrounded)
+        else if (Input.GetKey(MoveParams.downKey) && !States.isGrounded)
         {
-            combatParams.swordDown.SetActive(true);
-            hitDirection = Vector2.down;
+            CombatParams.swordDown.SetActive(true);
+            HitDirection = Vector2.down;
         }
-        else if (!Input.GetKey(moveParams.upKey))
+        else if (!Input.GetKey(MoveParams.upKey))
         {
-            combatParams.swordStraight.SetActive(true);
-            hitDirection = Vector2.right;
+            CombatParams.swordStraight.SetActive(true);
+            HitDirection = Vector2.right;
         }
     }
 
     private void Hit()
     {
-        var canHit = combatParams.canHit
-                && Input.GetKeyDown(combatParams.hitKey)
-                && (hitBlockTime + combatParams.hitReload * combatParams.hitAccel < timer)
-                && !states.isDashing
-                && (combatParams.energyUsage < healthParams.energy);
+        var canHit = Input.GetKeyDown(CombatParams.hitKey)
+                && !States.isDashing
+                && CombatParams.canHit
+                && Timer >= _MoveBlockTime
+                && (CombatParams.energyUsage < HealthParams.energy)
+                && (_HitBlockTime + CombatParams.hitReload * CombatParams.hitAccel < Timer);
 
         if (canHit)
         {
-            anim.speed = 0.25f / combatParams.hitReload;
-            anim.SetBool("isHit", true);
+            _Anim.speed = 0.25f / CombatParams.hitReload;
+            _Anim.SetBool("isHit", true);
 
-            ChangeEnergy(-combatParams.energyUsage, false);
-            hitBlockTime = timer + combatParams.hitReload;
-            states.isHitting = true;
+            ChangeEnergy(-CombatParams.energyUsage, false);
+            _HitBlockTime = Timer + CombatParams.hitReload;
+            States.isHitting = true;
             DoHit();
         }
-        if (states.isHitting && (hitBlockTime < timer))
+        if (States.isHitting && (_HitBlockTime < Timer))
         {
-            anim.speed = 1;
-            anim.SetBool("isHit", false);
+            _Anim.speed = 1;
+            _Anim.SetBool("isHit", false);
 
-            states.isHitting = false;
-            combatParams.swordDown.SetActive(false);
-            combatParams.swordUp.SetActive(false);
-            combatParams.swordWall.SetActive(false);
-            combatParams.swordStraight.SetActive(false);
+            States.isHitting = false;
+            CombatParams.swordDown.SetActive(false);
+            CombatParams.swordUp.SetActive(false);
+            CombatParams.swordWall.SetActive(false);
+            CombatParams.swordStraight.SetActive(false);
         }
-        if (!states.isHitting && Input.GetKey(combatParams.defKey))
+        if (!States.isHitting && Input.GetKey(CombatParams.defKey))
         {
-            states.isDefencing = true;
+            States.isDefencing = true;
         }
-        else states.isDefencing = false;
+        else States.isDefencing = false;
     }
 
     private void AnimateFlying()
     {
-        if (!states.isClinging && !states.isGrounded)
+        if (!States.isClinging && !States.isGrounded)
         {
-            if (body.velocity.y > 0.05f) anim.SetInteger("vertDir", 1);
-            else if (body.velocity.y < -0.05f) anim.SetInteger("vertDir", -1);
-            anim.SetBool("isRun", false);
+            if (_Body.velocity.y > 0.05f) _Anim.SetInteger("vertDir", 1);
+            else if (_Body.velocity.y < -0.05f) _Anim.SetInteger("vertDir", -1);
+            _Anim.SetBool("isRun", false);
         }
-        else anim.SetInteger("vertDir", 0);
+        else _Anim.SetInteger("vertDir", 0);
     }
 
-    void Start()
+    private void Start()
     {
-        body = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>();
-        transform.position = spawnpoint.transform.position;
+        _Body = GetComponent<Rigidbody2D>();
+        _Anim = GetComponent<Animator>();
+        transform.position = Spawnpoint.transform.position;
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        if (states.isClinging) 
-            body.AddForce(new Vector3(0, 1, 0) * body.mass * clingParams.force);
+        if (States.isClinging) 
+            _Body.AddForce(_ClingForce);
 
-        body.AddForce(new Vector3(0, jumpCurrentForce, 0) * body.mass * jumpParams.force);
+        _Body.AddForce(new Vector3(0, _JumpCurrentForce, 0) * _Body.mass * JumpParams.force);
 
-        if (canSprint)
+        if (_canSprint)
         {
-            body.AddForce(moveDirection * body.mass * moveParams.force * moveParams.sprintFactor
+            _Body.AddForce(_MoveDirection * _Body.mass * MoveParams.force * MoveParams.sprintFactor
                 * Time.deltaTime);
-            ChangeEnergy(-moveParams.sprintEnergyUsage * Time.deltaTime, false);
+            ChangeEnergy(-MoveParams.sprintEnergyUsage * Time.deltaTime, false);
         }
-        else body.AddForce(moveDirection * body.mass * moveParams.force * Time.deltaTime);
+        else _Body.AddForce(_MoveDirection * _Body.mass * MoveParams.force * Time.deltaTime);
     }
 
-    void Update()
+    private void Update()
     {
         AnimateFlying();
 
@@ -389,11 +405,11 @@ public class PlayerMove : MonoBehaviour
         Jump();
         Run();
 
-        healthParams.RegenerateEnergy(timer, regenStartTime);
-        healthParams.BarHandler();
+        HealthParams.RegenerateEnergy(Timer, _RegenStartTime);
+        HealthParams.BarHandler();
         Death();
 
-        timer += Time.deltaTime;
+        Timer += Time.deltaTime;
     }
+    #endregion
 }
-

@@ -30,14 +30,14 @@ public class SlimeCube : MonoBehaviour
     private void OnTriggerStay2D(Collider2D coll)
     {
         pm = player.GetComponent<PlayerMove>();
-        if (pm.shieldBreakTime < pm.timer)
+        if (pm.ShieldBreakTime < pm.Timer)
         {
             if (coll.transform.tag == "Player" && Agressive)
             {
-                pm.dashContiniusFlag = false;
-                pm.dashBreakTime = 0;
-                pm.jumpContiniusFlag = false;
-                pm.shieldBreakTime = pm.timer + ShieldingPlayer;
+                pm.DashContiniousFlag = false;
+                pm.DashBreakTime = 0;
+                pm.JumpContiniusFlag = false;
+                pm.ShieldBreakTime = pm.Timer + ShieldingPlayer;
                 pm.ChangeHP(Damag, true, false);
                 if (player.transform.position.x > transform.position.x)
                     pm.GetPunch(new Vector2(PushX, PushY));

@@ -8,7 +8,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <RootNamespace></RootNamespace>
+    <RootNamespace>
+    </RootNamespace>
     <ProjectGuid>{32C3BDE6-E125-3128-82C1-25D0441455A3}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -57,26 +58,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Entities\Enemies\SlimeCopter\SlimeCopter.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\PlayerMoveUpdate.cs" />
     <Compile Include="Assets\Entities\Player\Scripts\PlayerMove.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\PlayerP.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\EnergyHealth.cs" />
+    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\MoveParams.cs" />
     <Compile Include="Assets\Unsorted\slime.cs" />
     <Compile Include="Assets\Unsorted\CameraScript.cs" />
     <Compile Include="Assets\Entities\Enemies\Health.cs" />
+    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\CombatParams.cs" />
     <Compile Include="Assets\Entities\Enemies\Slime\SlimeCube.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\sword.cs" />
-    <Compile Include="Assets\Unsorted\CameraFollow2D.cs" />
-    <Compile Include="Assets\Entities\Player\sword\swordBeh.cs" />
-    <Compile Include="Assets\Unsorted\Platform.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\PlayerControl.cs" />
+    <Compile Include="Assets\Entities\Player\Scripts\Sword.cs" />
     <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\JumpParams.cs" />
+    <Compile Include="Assets\Unsorted\CameraFollow2D.cs" />
     <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\DashParams.cs" />
     <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\WallclingParams.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\MoveParams.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\CombatParams.cs" />
-    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\HealthParams.cs" />
+    <Compile Include="Assets\Unsorted\Platform.cs" />
     <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\States.cs" />
+    <Compile Include="Assets\Entities\Player\Scripts\ParameterStructs\HealthParams.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

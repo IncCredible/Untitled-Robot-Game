@@ -16,12 +16,12 @@ public class Health : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D coll)
     {
         if (coll.transform.tag == "PlayerHitbox" && !Invulnarable) {
-            if (pm.isFacingRight) body.velocity +=
-                    new Vector2(pm.combatParams.knockBack / body.mass * pm.hitDirection.x, 
-                pm.combatParams.knockBack / body.mass * pm.hitDirection.y);
-            else body.velocity += new Vector2(-pm.combatParams.knockBack / body.mass * pm.hitDirection.x, 
-                pm.combatParams.knockBack / body.mass * pm.hitDirection.y);
-            health -= pm.combatParams.damage / 2;
+            if (pm.IsFacingRight) body.velocity +=
+                    new Vector2(pm.CombatParams.knockback / body.mass * pm.HitDirection.x, 
+                pm.CombatParams.knockback / body.mass * pm.HitDirection.y);
+            else body.velocity += new Vector2(-pm.CombatParams.knockback / body.mass * pm.HitDirection.x, 
+                pm.CombatParams.knockback / body.mass * pm.HitDirection.y);
+            health -= pm.CombatParams.damage / 2;
         }
     }
     private void Start()

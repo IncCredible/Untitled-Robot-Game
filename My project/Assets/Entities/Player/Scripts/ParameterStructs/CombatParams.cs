@@ -10,11 +10,10 @@ public struct CombatParams
     public GameObject swordUp;
     public GameObject swordDown;
     public GameObject swordWall;
-    public GameObject pickaxe;
 
     public bool canHit;
     public string weapon;
-    public float knockBack;
+    public float knockback;
     public float damage;
     public float hitReload;
     public float hitScale;

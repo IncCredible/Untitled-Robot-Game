@@ -2,49 +2,68 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class sword : MonoBehaviour
+public class Sword : MonoBehaviour
 {
+    public int SwordType;
+    public float Width;
+    public float RecoilValueY;
+    public float RecoilValueX;
+    public float Length;
     public GameObject Owner;
-    public float wide;
-    public float bounce;
-    public float horbounce;
-    public float range;
-    public int type;
-    private PlayerMove pm;
-    Animator anim;
-    private float h_rel;
-    private float h_scale;
-    private bool h_f;
-    Color col;
-    void Start()
+
+    private bool _Flag;
+    private float _Reload;
+    private float _Scale;
+    private Color _Col;
+    private PlayerMove _PlayerMove;
+    private Animator _Anim;
+
+    private void Start()
     {
-        anim = GetComponent<Animator>();
-        col = GetComponent<SpriteRenderer>().color;
-        pm = Owner.GetComponent<PlayerMove>();
+        _Anim = GetComponent<Animator>();
+        _Col = GetComponent<SpriteRenderer>().color;
+        _PlayerMove = Owner.GetComponent<PlayerMove>();
     }
 
     private void OnTriggerEnter2D(Collider2D coll)
     {
-        if (((coll.transform.tag == "Spike") || (coll.transform.tag == "KingSlime")) && (type == 1))
+        if ((string.Equals(coll.transform.tag, "Spike", System.StringComparison.CurrentCultureIgnoreCase)
+            || string.Equals(coll.transform.tag, "KingSlime", System.StringComparison.CurrentCultureIgnoreCase)) 
+            && (SwordType == 1))
         {
-            pm.VerticalRecoil(bounce);
-            pm.dashFlag = true;
-            pm.doublejumpFlag = true;
+            _PlayerMove.VerticalRecoil(RecoilValueY);
+            _PlayerMove.DashFlag = true;
+            _PlayerMove.DoubleJumpFlag = true;
         }
-        if ((coll.transform.tag == "Wall") || (coll.transform.tag == "Spike") || (coll.transform.tag == "KingSlime")
-            && (type == 2))
-                    pm.HorizontakRecoil(horbounce);
+        if (string.Equals(coll.transform.tag, "Spike", System.StringComparison.CurrentCultureIgnoreCase)
+            || string.Equals(coll.transform.tag, "KingSlime", System.StringComparison.CurrentCultureIgnoreCase)
+            || string.Equals(coll.transform.tag, "Wall", System.StringComparison.CurrentCultureIgnoreCase)
+            && (SwordType == 2))
+            _PlayerMove.HorizontakRecoil(RecoilValueX);
 
     }
 
-    void Update()
+    private void GetDataFromPlayerMove()
     {
-        pm = Owner.GetComponent<PlayerMove>();
-        h_rel = pm.combatParams.hitReload;
-        h_scale = pm.combatParams.hitScale;
-        h_f = pm.states.isHitting;
-        transform.localScale = new Vector2(h_scale * wide, h_scale * range);
-        if (!h_f) { anim.speed = 0; col.a = 0; }
-        else { col.a = 0.9f; anim.speed = 0.25f / h_rel; }
+        _PlayerMove = Owner.GetComponent<PlayerMove>();
+        _Reload = _PlayerMove.CombatParams.hitReload;
+        _Scale = _PlayerMove.CombatParams.hitScale;
+        _Flag = _PlayerMove.States.isHitting;
+    }
+
+    private void Update()
+    {
+        GetDataFromPlayerMove();
+        transform.localScale = new Vector2(_Scale * Width, _Scale * Length);
+        if (_Flag) 
+        { 
+            _Col.a = 0.9f; 
+            _Anim.speed = 0.25f / _Reload; 
+        }
+        else 
+        { 
+            _Anim.speed = 0;
+            _Col.a = 0; 
+        }
     }
 }

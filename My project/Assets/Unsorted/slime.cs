@@ -50,11 +50,11 @@ public class slime : MonoBehaviour
     private void OnTriggerStay2D(Collider2D coll)
     {
         pm = player.GetComponent<PlayerMove>();
-        if (pm.shieldBreakTime < pm.timer)
+        if (pm.ShieldBreakTime < pm.Timer)
         {
             if (coll.transform.tag == "Player" && Agressive)
             {
-                pm.shieldBreakTime = pm.timer + ShieldingPlayer;
+                pm.ShieldBreakTime = pm.Timer + ShieldingPlayer;
                 pm.ChangeHP(Damag, true, true);
                 if (player.transform.position.x > transform.position.x)
                     pm.GetPunch(new Vector2(PushX, PushY));
